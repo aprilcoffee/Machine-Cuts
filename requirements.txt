@@ -1,0 +1,27 @@
+# --- Machine Cut / package list -------------------------------------------
+# VS Code installs this for you (week 1, "Python: Create Environment").
+# By hand:  pip install -r requirements.txt
+# ffmpeg is NOT a pip package - install it separately (see ch01_python)
+
+# basics (week 2-3)
+numpy>=1.24
+opencv-python>=4.8
+Pillow>=10.0
+
+# shot detection (week 3)
+scenedetect>=0.6.4
+
+# the embedding model, SigLIP 2 (week 5-6)
+torch>=2.2
+torchvision>=0.17
+open_clip_torch>=3.0
+transformers>=4.45        # needed by SigLIP 2's tokenizer
+sentencepiece             # ditto
+ftfy
+regex
+
+# local LLM (week 7) - it is just HTTP, requests is enough
+requests>=2.31
+
+# the interface (week 8)
+streamlit>=1.43        # autoplay/loop on st.video, keys on st.container
