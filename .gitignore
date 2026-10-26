@@ -1,0 +1,45 @@
+# --- HTML: reading copies and generated pages, never published ------------
+*.html
+
+# --- Chinese tutor material (kept local, not published) -------------------
+# The English notes are the README.md files; these are the Chinese copies.
+docs/zh/
+
+# --- footage and everything derived from it -------------------------------
+data/raw/*
+data/work/*
+data/out/*
+!data/raw/.gitkeep
+!data/work/.gitkeep
+!data/out/.gitkeep
+
+# model weights and caches that scripts download at runtime
+*.pt
+*.task
+*.tflite
+
+# --- python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# --- editors and OS -------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+
+# --- tools ----------------------------------------------------------------
+.ipynb_checkpoints/
+.streamlit/
+runs/
