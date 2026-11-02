@@ -21,6 +21,7 @@ sheet per film.
 | `03_make_proxies.py` | a small copy of every film → `data/work/<film>/proxy.mp4` |
 | `04_proxy_sheet.py` | one contact sheet per film → `data/out/sheets/<film>.jpg` |
 | `05_status.py` | which film has which step done |
+| `06_histogram.py` | one frame and its histogram, as one picture → `data/out/histograms/<film>.jpg` |
 
 ## New files in the project this week
 
@@ -57,7 +58,8 @@ minutes. Do it on a good network — before class if you can. Then:
 python ch02_vlab/01_check_env.py
 ```
 
-Every line should say `[ok]`. Ollama (week 7) may still say `[--]`.
+It should end with `all good`. If a package is missing, it prints the
+exact install line for the Python you are using: copy it into the terminal.
 
 ---
 
@@ -150,6 +152,24 @@ proxy instead of the original — much faster, because the proxy is small.
 Put all the sheets of your films side by side — that is the first time
 your footage is a set of stills, which is the only thing an image model
 will ever see.
+
+## 5. One frame as a histogram
+
+```bash
+python ch02_vlab/06_histogram.py
+```
+
+It takes one frame of your film (`SECONDS = 10` at the top) and draws its
+**histogram** underneath it: 32 bars, from dark on the left to bright on
+the right. Each bar counts how many pixels have that brightness.
+
+A histogram throws away *where* things are and keeps only *how much*.
+The whole picture becomes 32 numbers — the first way a machine "looks".
+
+Change `SECONDS` to a moment in a different shot and run it again. Do
+the two histograms look alike? Next week this comparison, frame after
+frame, is how the machine finds the cuts. `FILM = 1` takes your second
+film.
 
 ---
 
