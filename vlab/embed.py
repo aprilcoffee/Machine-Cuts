@@ -19,7 +19,7 @@ WHY SigLIP 2 AND NOT CLIP
     matrix multiplication.
 
 NOTE  The SigLIP 2 tokenizer comes from the transformers package, so
-      `pip install transformers sentencepiece` is required even though we
+      `pip install transformers` is required even though we
       never call transformers ourselves.
 """
 from __future__ import annotations
