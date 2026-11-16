@@ -32,6 +32,9 @@ nearly all of those frames are the same picture.
 Three frames per shot is this course's compromise, not a law. Changing
 `n` changes what your archive is able to find. Run
 ch03_shots/04_keyframe_sheet.py to SEE the frames a given n picks.
+
+Each of those stills keeps its own vector; they are never averaged into
+one. A shot scores as well as its best still - vlab/search.py.
 """
 from __future__ import annotations
 

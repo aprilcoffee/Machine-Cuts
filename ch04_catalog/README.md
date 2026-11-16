@@ -112,22 +112,16 @@ It listens on `127.0.0.1`, which means *this machine only*. Nothing is
 online, nothing leaves the drive. Open the script and read it — the whole
 server is about forty lines.
 
-### The two files you can keep
+### The one file it writes
 
-The buttons at the top of the page write them:
+The button at the top writes `data/out/human_tags.csv` — your words as a
+spreadsheet, one row per shot.
 
-| button | file | what it is |
-|---|---|---|
-| save index.html | `data/out/index.html` | the same page frozen, without the fields — keep it, move it, send it to someone |
-| save human_tags.csv | `data/out/human_tags.csv` | your words as a spreadsheet |
-
-The page itself needs the server; `index.html` does not. Rerun the script
-after Gemma has written captions (week 7) and the same page grows a line
-under each shot.
-
-Week 8's pipeline writes `index.html` for you with
-`python ch04_catalog/03_browse_and_tag.py --write`, which saves the page
-and quits without opening anything.
+Nothing else is saved, because nothing else needs to be: the words
+themselves live in `data/work/<film>/shots.json`, and this page is how
+you look at them. Start the script again whenever you want it back. It
+re-reads the tables on every refresh, so after Gemma has written captions
+(week 7) they appear under the shots without restarting anything.
 
 ## When it breaks
 
@@ -135,8 +129,6 @@ and quits without opening anything.
   terminal, or use `--port 8010`
 - **the browser does not open by itself** → copy the address the terminal
   prints into it
-- **videos play on the page but not in `index.html`** → the saved copy
-  points at the files on your disk; keep `data/work/` where it is
 - **CSV shows garbled characters** → open it with Numbers or Google
   Sheets, or import as UTF-8
 - **your words vanish** → they are in `data/work/<film>/shots.json`;

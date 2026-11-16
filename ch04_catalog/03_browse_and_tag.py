@@ -1,29 +1,27 @@
-"""ch04-02 - Browse the archive and tag it, in a browser
+"""ch04-03 - Browse the archive and tag it, in a browser
 
-    python ch04_catalog/03_browse_and_tag.py          # opens the page
-    python ch04_catalog/03_browse_and_tag.py --write  # only save the page, quit
+    python ch04_catalog/03_browse_and_tag.py
+    python ch04_catalog/03_browse_and_tag.py --port 8010
 
 Every shot of every film on one page: click to play, type your own words
-next to the machine's. Each field saves itself into
-data/work/<film>/shots.json the moment you leave it. Stop button or
-Ctrl+C in the terminal when you are done.
+underneath. Each field saves itself into data/work/<film>/shots.json the
+moment you leave it. Stop button or Ctrl+C in the terminal when done.
 
 WHY A SERVER. A page opened as a file (file:///...) is not allowed to
 write to your disk - that is the point of a browser. So this script is a
 tiny web server on 127.0.0.1 (this machine only, nothing online): the
 page asks, Python writes. That is all a "web app" is.
 
-    data/out/index.html       a frozen copy to keep or send on (no server)
-    data/out/human_tags.csv   the same words as a spreadsheet
-
-Both come from the buttons at the top of the page. --write writes
-index.html and quits; that is how ch08's pipeline uses this script.
+The button at the top writes data/out/human_tags.csv - your words as a
+spreadsheet. Nothing else is saved: the words themselves live in
+shots.json, and this page is how you look at them.
 """
 import csv
 import html
 import json
 import mimetypes
 import sys
+import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -33,10 +31,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vlab import catalog, cli, paths  # noqa: E402
 
 PORT = cli.flag("--port", 8004, int)
-INDEX = paths.OUT / "index.html"
 TAGS = paths.OUT / "human_tags.csv"
 
 cat = catalog.load()
+lock = threading.Lock()        # two tabs must not write at the same moment
+
+
+def fresh():
+    """Re-read the tables from disk.
+
+    The page holds no state of its own. Other scripts write into the same
+    shots.json - ch07 adds captions, ch03 can cut the shots again - so the
+    file on disk, not what this script read at startup, is the truth. Read
+    it before showing anything and before every save, or a tag typed here
+    would quietly put the archive back the way it was an hour ago.
+    """
+    global cat
+    cat = catalog.load()
 
 
 def done():
@@ -71,63 +82,54 @@ document.querySelectorAll('input').forEach(i => {
     say.textContent = await r.text();
   };
 });
-async function save(what) {
+async function save() {
   say.textContent = 'saving ...';
-  say.textContent = await (await fetch('/save?' + what, {method: 'POST'})).text();
+  say.textContent = await (await fetch('/save', {method: 'POST'})).text();
 }"""
 
 
-def card(s, live):
-    """One shot. Served live it has input fields; saved it does not."""
+def card(s):
+    """One shot: the clip, what is known about it, and two fields of yours."""
     e = html.escape
-    if live:
-        src, poster = "/media/" + s["clip"], "/media/" + s["keyframe"]
-    else:
-        src = (paths.PROJECT / s["clip"]).resolve().as_uri()
-        poster = (paths.PROJECT / s["keyframe"]).resolve().as_uri()
-
     pills = "".join(f'<span class="tag">{e(str(t))} <b>{v:.2f}</b></span>'
                     for t, v in s.get("tags", [])[:5])
-    mine = ", ".join(s.get("human_tags", []))
-    if live:
-        fields = (f'<input class="tg" placeholder="your tags, comma separated" '
-                  f'value="{e(mine)}"><input class="cp" placeholder="your sentence" '
-                  f'value="{e(s.get("human_caption", ""))}">')
-    else:
-        pills += f'<span class="tag mine">{e(mine)}</span>' if mine else ""
-        fields = (f'<div class="cap">{e(s["human_caption"])}</div>'
-                  if s.get("human_caption") else "")
     cap = f'<div class="cap">{e(s["caption"])}</div>' if s.get("caption") else ""
-
+    # on Windows the catalog stores data\work\...; a URL wants forward slashes
+    clip, key = (s["clip"].replace("\\", "/"), s["keyframe"].replace("\\", "/"))
     return (f'<div class="card" data-id="{e(s["id"])}">'
-            f'<video src="{src}" poster="{poster}" controls preload="none"></video>'
+            f'<video src="/media/{clip}" poster="/media/{key}" '
+            f'controls preload="none"></video>'
             f'<div class="body"><span class="id">{e(s["id"])}</span>'
             f'<span class="t"> · {s["start"]:.2f}-{s["end"]:.2f}s</span>'
-            f'<div class="tags">{pills}</div>{cap}{fields}</div></div>')
+            f'<div class="tags">{pills}</div>{cap}'
+            f'<input class="tg" placeholder="your tags, comma separated" '
+            f'value="{e(", ".join(s.get("human_tags", [])))}">'
+            f'<input class="cp" placeholder="your sentence" '
+            f'value="{e(s.get("human_caption", ""))}"></div></div>')
 
 
-def page(live):
+def page():
     out = []
     for film, info in cat["films"].items():
         shots = [s for s in cat["shots"] if s["film"] == film]
         out.append(f"<h2>{html.escape(film)}</h2><div class='meta'>{len(shots)} shots · "
                    f"{info['duration'] / 60:.1f} min</div><div class='grid'>"
-                   f"{''.join(card(s, live) for s in shots)}</div>")
-    bar = (f"<div class='bar'><button onclick=\"save('page')\">save index.html</button>"
-           f"<button onclick=\"save('csv')\">save human_tags.csv</button>"
+                   f"{''.join(card(s) for s in shots)}</div>")
+    bar = (f"<div class='bar'>"
+           f"<button onclick=\"save()\">save human_tags.csv</button>"
            f"<span id='say'>{done()} of {len(cat['shots'])} shots have your words"
-           f"</span></div><script>{JS}</script>") if live else ""
+           f"</span></div>")
+    # the script goes last: it looks for the inputs, so they must exist already
     return (f"<!doctype html><meta charset='utf-8'><title>the archive</title>"
             f"<style>{CSS}</style><h1>the archive</h1>"
-            f"<div class='meta'>{catalog.summary(cat)}</div>{bar}{''.join(out)}")
+            f"<div class='meta'>{catalog.summary(cat)}</div>"
+            f"{bar}{''.join(out)}<script>{JS}</script>")
 
 
-def save(what):
-    """Write one of the two keepable files and return its path."""
+def save_csv():
+    """Your words as a spreadsheet."""
+    fresh()
     paths.ensure_dirs()
-    if what != "csv":
-        INDEX.write_text(page(live=False), encoding="utf-8")
-        return INDEX
     with open(TAGS, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(["id", "film", "start", "end", "your_tags", "your_caption"])
@@ -151,10 +153,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if not self.path.startswith("/media/"):
-            return self.reply(page(live=True), "text/html")
+            fresh()
+            return self.reply(page(), "text/html")
         # data/work only - a server on your own machine still should not
         # hand out your whole disk
-        f = (paths.PROJECT / unquote(self.path[7:])).resolve()
+        asked = unquote(self.path[7:]).replace("\\", "/")
+        f = (paths.PROJECT / asked).resolve()
         if not (f.is_file() and f.is_relative_to(paths.WORK.resolve())):
             return self.send_error(404)
         # Range: without it Safari refuses to play video at all
@@ -175,21 +179,23 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(fh.read(end - start + 1))
 
     def do_POST(self):
-        if self.path.startswith("/save"):
-            dst = save("csv" if "csv" in self.path else "page")
-            print("  saved", paths.rel(dst))
-            return self.reply("saved " + paths.rel(dst))
+        body = (json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                if not self.path.startswith("/save") else None)
+        with lock:
+            if body is None:
+                print("  saved", paths.rel(save_csv()))
+                return self.reply("saved " + paths.rel(TAGS))
 
-        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        shot = next(s for s in cat["shots"] if s["id"] == body["id"])
-        words = body["tags"].replace("，", ",")      # CJK keyboards type this one
-        shot["human_tags"] = [w.strip() for w in words.split(",") if w.strip()]
-        shot["human_caption"] = body["caption"].strip()
-        film = shot["film"]
-        catalog.write_film(cat["films"][film],
-                           [s for s in cat["shots"] if s["film"] == film])
-        print(f"  {shot['id']}  {', '.join(shot['human_tags']) or '(cleared)'}")
-        self.reply(f"{done()} of {len(cat['shots'])} shots have your words")
+            fresh()                                  # read, change, write back
+            shot = next(s for s in cat["shots"] if s["id"] == body["id"])
+            words = body["tags"].replace("，", ",")   # CJK keyboards type this one
+            shot["human_tags"] = [w.strip() for w in words.split(",") if w.strip()]
+            shot["human_caption"] = body["caption"].strip()
+            film = shot["film"]
+            catalog.write_film(cat["films"][film],
+                               [s for s in cat["shots"] if s["film"] == film])
+            print(f"  {shot['id']}  {', '.join(shot['human_tags']) or '(cleared)'}")
+            self.reply(f"{done()} of {len(cat['shots'])} shots have your words")
 
     def log_message(self, *a):
         pass                                   # the browser asks for a lot
@@ -200,10 +206,6 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass                               # the browser stopped a video
 
-
-if cli.has("--write"):
-    print("->", paths.rel(save("page")))
-    raise SystemExit
 
 url = f"http://127.0.0.1:{PORT}/"
 print(f"\n{catalog.summary(cat)}")
