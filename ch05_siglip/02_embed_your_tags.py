@@ -14,8 +14,8 @@ the CSV:
 Open it in a spreadsheet: this is everything the model knows about your
 shots and your words. 03 measures how close the rows are to each other.
 
-Each word is sent as "a photo of {word}." (vlab/embed.py), the shape of
-the captions the model learned from.
+Each word goes in exactly as you typed it in ch04 - nothing is added
+around it.
 """
 import csv
 import sys
@@ -36,7 +36,7 @@ words = sorted({w for s in tagged for w in s["human_tags"]})
 print(f"{len(tagged)} shots you tagged · {len(words)} different words")
 print(f"loading {embed.MODEL} ...")
 images = embed.encode_images([paths.PROJECT / s["keyframe"] for s in tagged])
-texts = embed.encode_texts(words)
+texts = embed.encode_texts(words, template="{}")   # exactly as typed
 
 paths.ensure_dirs()
 with open(CSV, "w", newline="", encoding="utf-8-sig") as f:
